@@ -1,0 +1,72 @@
+name: Windows 11 Android Launcher CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    name: Test & Build Flutter App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze Project
+        run: flutter analyze
+
+      - name: Run Widget & Unit Tests
+        run: flutter test
+
+      - name: Build Web Bundle
+        run: flutter build web --release --base-href "/windows-11-launcher-android/"
+
+      - name: Build Android Release APK
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-11-launcher-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || 'v1.1.0' }}
+          name: "Windows 11 Launcher ${{ github.ref_name || 'v1.1.0' }}"
+          files: build/app/outputs/flutter-apk/app-release.apk
+          body: |
+            ### 🪟 Windows 11 Launcher for Android
+            Pure Flutter 3.x desktop simulation environment for Android and Web.
+
+            - **Centered Fluent Taskbar**: Windows Start button `⊞`, pinned apps, running indicators, search trigger.
+            - **Start Menu**: Pinned applications grid, recommended documents, user profile, and power controls.
+            - **Action Center**: Quick settings (Wi-Fi, Bluetooth, Airplane, Night Light, Battery Saver), volume and brightness sliders.
+            - **File Explorer**: Windows 11 Acrylic Mica tabbed interface with breadcrumb navigation and command ribbon.
+            - **Windows 11 Bloom Aesthetic**: Dark Bloom layered wallpaper and palette-aware Fluent typography.
